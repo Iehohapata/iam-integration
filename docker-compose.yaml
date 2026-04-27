@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: casdoor
+      POSTGRES_PASSWORD: casdoor_password
+      POSTGRES_DB: casdoor
+    volumes:
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U casdoor -d casdoor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  casdoor:
+    image: casbin/casdoor:3.41.1
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      driverName: "postgres"
+      dataSourceName: "user=casdoor password=casdoor_password host=db port=5432 sslmode=disable dbname=casdoor"
+      origin: "https://auth.local:8443"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2.11.2-alpine
+    ports:
+      - "80:80"
+      - "443:443"     # Web App
+      - "8443:8443"   # Casdoor IAM
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      casdoor:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - auth.local
+
+  auth-webapp:
+    build: ./auth-webapp
+    environment:
+      - OIDC_ISSUER=https://auth.local:8443
+      - CLIENT_ID=2e31f93bb53752f90b67
+      - CLIENT_SECRET=add9f4351496f2d9512a97ce53b395197a269201
+      - REDIRECT_URL=https://localhost/callback
+    depends_on:
+      casdoor:
+        condition: service_healthy
+      caddy:
+        condition: service_started
+
+volumes:
+  db_data:
+  caddy_data:

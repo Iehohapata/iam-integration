@@ -1,0 +1,9 @@
+localhost:443 {
+    tls internal
+    reverse_proxy auth-webapp:8080
+}
+
+auth.local:8443 {
+    tls internal
+    reverse_proxy casdoor:8000
+}

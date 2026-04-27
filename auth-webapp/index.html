@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>IAM Integration</title>
+</head>
+
+<body style="font-family: sans-serif; padding: 20px;">
+	<h1>Go Web Service + Casdoor OIDC</h1>
+
+	<button onclick="login()">1. Login via IAM</button>
+	<button onclick="getUserInfo()">2. Get User Info </button>
+	<button onclick="logout()">3. Logout (Clear Cookie)</button>
+
+	<h3>Status / Output:</h3>
+	<pre id="output" style="background: #f4f4f4; padding: 15px; border-radius: 5px;"></pre>
+
+	<script>
+		const urlParams = new URLSearchParams(window.location.search);
+		const token = urlParams.get('token');
+		if (token) {
+			document.cookie = `auth_token=${token}; path=/; Secure; SameSite=Lax`;
+			window.history.replaceState({}, document.title, "/"); // Clean the URL
+			document.getElementById('output').innerText = "Authentication Token successfully stored in cookie.";
+		}
+
+		function login() {
+			window.location.href = '/login';
+		}
+
+		async function getUserInfo() {
+			const output = document.getElementById('output');
+			output.innerText = "Loading...";
+
+			const response = await fetch('/user-info');
+
+			if (response.status === 401) {
+				output.innerText = "401 Unauthorized: Invalid or missing token.";
+				return;
+			}
+
+			const data = await response.json();
+			output.innerText = JSON.stringify(data, null, 2);
+		}
+
+		function logout() {
+			document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+			document.getElementById('output').innerText = "Token deleted.";
+		}
+	</script>
+</body>
+
+</html>
